@@ -22,7 +22,9 @@ body {
 
 .chatboart {
     position: relative;
-    width: 420px;
+    /* width: 420px; */
+    width: 80%;
+    height: 100%;
     overflow: hidden;
     border-radius: 15px;
     box-shadow: 0 0 128px 0 rgba(0, 0, 0, 0.1), 
@@ -81,6 +83,8 @@ body {
     margin-bottom: 82px;
     overflow-y: auto;
     flex-direction: column;
+    scrollbar-width: thin;
+    scrollbar-color: #ccccf5 transparent;
 }
 
 .ccontent .msg{
@@ -238,4 +242,6 @@ body {
 .chat-form .chat-controls button:hover{
     background: #f1f1f1;
 }
+
+
 

@@ -1,143 +1,126 @@
 const API_KEY = "AIzaSyDSgFmTjqv665yMkX8gaQINWFO1RiP8R94"; // Store your keys securely
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+
 const fileInput = document.querySelector('#file-input');
 const fileuploadwrapper = document.querySelector('.file-upload-wrapper');
-let userData = {}; // Initialize userData to store file data
+const filecancelButton = document.querySelector("#file-cancel");
+const sendButton = document.querySelector('#send-msg');
+const chatContent = document.querySelector('.ccontent');
+const messageInput = document.querySelector('.msg-input');
 
-const filecancelButton =document.querySelector("#file-cancel");
+let userData = {};
+const chatbotToggler = document.querySelector("#chatbot-toggler");
+const closeChatbot = document.querySelector("#close-chatbot");
 
+const chatHistory = [];
+const initialInputHeight = messageInput.scrollHeight;
+
+// Function to handle the bot response generation
 const generateBotResponse = async (userText, imageData) => {
-    if (!userText && !imageData) {
-        return "Error: Empty message received.";
-    }
+    chatHistory.push({
+        role: "user",
+        parts: [
+            { text: userText },
+            ...(userData.file ? [{ inline_data: userData.file }] : []),
+        ]
+    });
 
     const requestBody = {
-        contents: [
-            {
-                parts: [
-                    {
-                        text: userText,
-                    },
-                    ...(userData.file ? [{ inline_data: userData.file }] : []), // Include the file data if it exists
-                ]
-            }
-        ]
-    };
-    console.log("Request Body:", JSON.stringify(requestBody)); // Log the request body
-
-    const requestOptions = {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody)
+        contents: chatHistory
     };
 
     try {
-        const response = await fetch(API_URL, requestOptions);
-        if (!response.ok) {
-            const errorData = await response.json(); // Get the error response
-            console.error("Error response from API:", errorData);
-            throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.error.message}`);
-        }
+        const response = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requestBody)
+        });
         const responseData = await response.json();
-        console.log("API Response:", responseData);
-        return responseData.candidates[0].content.parts[0].text.replace(/\*\*(.*?)\*\*/g, '').trim() || "No response from bot";
+        return responseData.candidates[0]?.content.parts[0]?.text || "No response";
     } catch (error) {
-        console.error("Error fetching bot response:", error);
-        return "Error: Could not fetch response.";
+        console.error("Error:", error);
+        return "Error fetching response.";
     } finally {
-        // Reset userData.file to clear the selected file
-        userData.file = {};
+        userData.file = {}; // Reset file data after sending
     }
 };
 
-
-// Update the event listener for sending messages
-document.getElementById('send-msg').addEventListener('click', function (e) {
+// Attach Event Listeners
+sendButton.addEventListener('click', async (e) => {
     e.preventDefault();
-    const input = document.querySelector('.msg-input');
-    const rawMessage = input.value.trim();  // Trim input message
+    messageInput.dispatchEvent(new Event("input"));
+    const rawMessage = messageInput.value.trim();
+    if (!rawMessage && !userData.file) return; // Prevent sending empty message
 
-    if (rawMessage.length > 0 || userData.file) {
-        // Create user message element
-        const userMessage = document.createElement('div');
-        userMessage.className = 'msg user-msg';
-        const messageText = document.createElement('div');
-        messageText.className = 'msg-txt';
-        messageText.textContent = rawMessage;
-
-        userMessage.appendChild(messageText);
-        
-        // Check if there's an uploaded file and add it to the message
-        if (userData.file) {
-            const imgElement = document.createElement('img');
-            imgElement.src = `data:${userData.file.mime_type};base64,${userData.file.data}`;
-            imgElement.className = 'attachment';
-            userMessage.appendChild(imgElement);
-        }
-
-        document.querySelector('.ccontent').appendChild(userMessage);
-        
-        // Clear input field
-        input.value = '';
-
-
-        filecancelButton.addEventListener("click",()=>{
-            userData.file = {};
-            fileuploadwrapper.classList.remove("file-uploaded");
-        })
-
-        // Add a thinking indicator for the bot
-        setTimeout(async () => {
-            const botMessage = document.createElement('div');
-            botMessage.className = 'msg bot-msg thinking';
-            botMessage.innerHTML = ` 
-            <svg class="bot-avatar" xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12c0 2.5 1.03 4.76 2.68 6.36-.03.1-.07.2-.07.31 0 .55.45 1 1 1h2.5c.55 0 1-.45 1-1v-1.5c0-.55-.45-1-1-1H6.68C6.03 16.76 6 15.9 6 15c0-4.41 3.59-8 8-8s8 3.59 8 8c0 .9-.03 1.76-.68 2. 36h-1.82c-.55 0-1 .45-1 1v1.5c0 .55.45 1 1 1h2.5c.55 0 1-.45 1-1 0-.11-.04-.21-.07-.31C21.97 16.76 23 14.5 23 12c0-5.52-4.48-10-10-10z"/>
-            </svg>
-                <div class="msg-txt">
-                    <div class="thinking-indicator">
-                        <div class="dot"></div>
-                        <div class="dot"></div>
-                        <div class="dot"></div>
-                    </div>
-                </div>
-            `;
-            
-            document.querySelector('.ccontent').appendChild(botMessage);
-            document.querySelector('.ccontent').scrollTo({ top: document.querySelector('.ccontent').scrollHeight, behavior: "smooth" });
-            
-            // Now call generateBotResponse to get the bot's real response
-            const botResponseText = await generateBotResponse(rawMessage, userData.file ? userData.file.data : null);
-            botMessage.classList.remove('thinking'); // Remove thinking class
-            botMessage.innerHTML = `
-            <svg class="bot-avatar" xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12c0 2.5 1.03 4.76 2.68 6.36-.03.1-.07.2-.07.31 0 .55.45 1 1 1h2.5c.55 0 1-.45 1-1v-1.5c0-.55-.45-1-1-1H6.68C6.03 16.76 6 15.9 6 15c0-4.41 3.59-8 8-8s8 3.59 8 8c0 .9-.03 1.76-.68 2.36h-1.82c-.55 0-1 .45-1 1v1.5c0 .55.45 1 1 1h2.5c.55 0 1-.45 1-1 0-.11-.04-.21-.07-.31C21.97 16.76 23 14.5 23 12c0-5.52-4.48-10-10-10z"/>
-            </svg>
-                <div class="msg-txt">${botResponseText}</div>
-            `;
-            document.querySelector('.ccontent').scrollTo({ top: document.querySelector('.ccontent').scrollHeight, behavior: "smooth" });
-        }, 1000);
+    // Add user message to the chat
+    const userMessage = document.createElement('div');
+    userMessage.className = 'msg user-msg';
+    userMessage.innerHTML = `<div class="msg-txt">${rawMessage}</div>`;
+    if (userData.file) {
+        const imgElement = document.createElement('img');
+        imgElement.src = `data:${userData.file.mime_type};base64,${userData.file.data}`;
+        imgElement.className = 'attachment';
+        userMessage.appendChild(imgElement);
     }
+    chatContent.appendChild(userMessage);
+    messageInput.value = '';
+
+    // Add bot's thinking animation
+    const botMessage = document.createElement('div');
+    botMessage.className = 'msg bot-msg thinking';
+    botMessage.innerHTML = `
+        <div class="msg-txt">
+            <div class="thinking-indicator">
+                <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+            </div>
+        </div>`;
+    chatContent.appendChild(botMessage);
+    chatContent.scrollTo({ top: chatContent.scrollHeight, behavior: "smooth" });
+
+    // Get bot response and update chat
+    const botResponseText = await generateBotResponse(rawMessage, userData.file?.data || null);
+    botMessage.classList.remove('thinking');
+    botMessage.innerHTML = `<div class="msg-txt">${botResponseText}</div>`;
+    chatContent.scrollTo({ top: chatContent.scrollHeight, behavior: "smooth" });
+});
+
+// Adjust input field dynamically
+messageInput.addEventListener("input", () => {
+    messageInput.style.height = `${initialInputHeight}px`; // Reset height before resizing
+    messageInput.style.height = `${messageInput.scrollHeight}px`; // Adjust to new content
+    document.querySelector(".chat-form").style.borderRadius = messageInput.scrollHeight > initialInputHeight ? "15px" : "32px";
+});
+
+// Other Listeners for file upload
+filecancelButton.addEventListener("click", () => {
+    userData.file = {}; // Clear file data
+    fileuploadwrapper.classList.remove("file-uploaded"); // Reset UI
 });
 
 fileInput.addEventListener("change", () => {
     const file = fileInput.files[0];
-    if (!file) return;
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const base64String = e.target.result.split(",")[1];
+            userData.file = { data: base64String, mime_type: file.type };
 
-    // Convert file to base64 format
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        fileuploadwrapper.querySelector("img").src=e.target.result;
-        fileuploadwrapper.classList.add("file-uploaded");
-        const base64String = e.target.result.split(",")[1];
-        console.log("File data:", base64String); // Log the base64 string
-        userData.file = {
-            data: base64String,
-            mime_type: file.type
+            // Display the file preview
+            const imgElement = fileuploadwrapper.querySelector("img");
+            imgElement.src = e.target.result;
+            fileuploadwrapper.classList.add("file-uploaded");
+            fileInput.value = ""; // Reset the file input field
         };
-        fileInput.value = ""; // Clear the file input
-    };
-    reader.readAsDataURL(file);
+        reader.readAsDataURL(file);
+    }
 });
 
-document.querySelector('#file-upload').addEventListener("click", () => fileInput.click());
+// Toggle chatbot visibility
+chatbotToggler.addEventListener("click", () => {
+    document.body.classList.toggle("show-chatbot");
+});
+
+// Close chatbot
+closeChatbot.addEventListener("click", () => {
+    document.body.classList.remove("show-chatbot");
+});

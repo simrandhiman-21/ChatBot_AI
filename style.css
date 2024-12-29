@@ -230,7 +230,13 @@ body {
     display: block;
 }
 
-
+.attachment {
+    max-width: 100%; /* Ensure the image fits within the chat container */
+    height: 200px;    /* Maintain aspect ratio */
+    border-radius: 8px; /* Optional: Add rounded corners */
+    margin-top: 5px; /* Optional: Add some space above the image */
+    margin-bottom: 5px; /* Optional: Add some space below the image */
+}
 
 .chat-form .chat-controls #send-msg:hover{
     background:#3d39ac;
@@ -243,5 +249,32 @@ body {
     background: #f1f1f1;
 }
 
+
+.chat-form .file-upload-wrapper{
+    height: 35px;
+    width: 35px;
+    position: relative;
+}
+.chat-form .file-upload-wrapper img{
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    display: none;
+}
+
+.chat-form .file-upload-wrapper #file-cancel{
+    color:red;
+    background:#fff;
+}
+.chat-form .file-upload-wrapper :where(img, #file-cancel),
+.chat-form .file-upload-wrapper.file-uploaded #file-upload{
+    display: none;
+}
+.chat-form .file-upload-wrapper.file-uploaded img,
+.chat-form .file-upload-wrapper.file-uploaded:hover #file-cancel{
+    display: block;
+}
 
 
